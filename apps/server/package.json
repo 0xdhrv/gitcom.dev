@@ -1,13 +1,11 @@
 {
   "name": "github-comment-parsing",
-  "module": "index.ts",
+  "module": "app.ts",
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "bun run index.ts",
-    "dev": "bun --watch index.ts",
-    "start:express": "bun run app.ts",
-    "dev:express": "bun --watch app.ts",
+    "start": "bun run app.ts",
+    "dev": "bun --watch app.ts",
     "type-check": "tsc --noEmit",
     "lint": "tsc --noEmit"
   },
