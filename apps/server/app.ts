@@ -1,5 +1,5 @@
 import express, { type Request, type Response } from "express";
-import { GitHubClient, type PullRequestReviewComment } from "./lib/github";
+import { GitHubClient, type PullRequestReviewComment } from "./lib/github.js";
 import { encoding_for_model } from "tiktoken";
 
 const app = express();
