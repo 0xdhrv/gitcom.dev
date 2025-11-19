@@ -1,131 +1,162 @@
 # GitHub Comment Parsing
 
-A monorepo for GitHub Pull Request comment parsing tools.
+Transform any GitHub Pull Request into LLM-ready markdown. Simply replace `github.com` with `gitcom.dev` in any PR URL to get all comments formatted with line numbers and token counts.
 
-## Structure
+## Usage
 
+Simply replace `github.com` with `gitcom.dev` in any pull request URL to get LLM-ready markdown of all comments.
+
+**Example:**
 ```
-github-comment-parsing/
-├── apps/
-│   ├── mcp/             # MCP (Model Context Protocol) server
-│   └── server/          # REST API server for fetching and formatting PR comments
-└── README.md            # This file
+Original: https://github.com/inboundemail/inbound/pull/142
+GitCom:   https://gitcom.dev/inboundemail/inbound/pull/142
 ```
 
-## Apps
+Want just the 5th comment? Add the comment number:
+```
+https://gitcom.dev/inboundemail/inbound/pull/142/5
+```
 
-### Server (`apps/server`)
+## Features
 
-A web server that fetches and parses GitHub Pull Request comments, returning them as formatted markdown with line numbers and token counts.
+- 📝 Fetch all comments from a GitHub Pull Request
+- 🔢 Get specific comments by number (1, 2, 3...)
+- 🎯 Token counting using tokenization
+- 📊 Clean markdown-formatted output
+- ⚡ Built with Bun for performance
 
-**Features:**
-- REST API endpoints for PR comments
-- Token counting using GPT-4 tokenization
-- Markdown formatted output
-- Filter by comment number
+## Quick Start (Self-Hosting)
 
-See [apps/server/README.md](apps/server/README.md) for more details.
-
-### MCP (`apps/mcp`)
-
-Model Context Protocol server for LLM integration. Provides tools that wrap the REST API server, allowing AI agents to fetch and analyze GitHub PR comments.
-
-**Features:**
-- `get-pr-comments` tool for fetching PR comments
-- Supports filtering by comment number
-- Returns markdown with token counts
-- Wraps the REST API server via HTTP
-
-**Note:** The REST API server (`apps/server`) must be running for the MCP server to function.
-
-See [apps/mcp/README.md](apps/mcp/README.md) for more details.
-
-## Getting Started
-
-### Quick Start (Both Servers)
-
-1. **Start the REST API server** (required for both REST and MCP):
+1. **Install dependencies:**
 ```bash
-# From root
-bun server:dev
-
-# Or from apps/server
-cd apps/server
 bun install
-bun dev
 ```
 
-2. **Start the MCP server** (optional, for LLM integration):
+2. **Set your GitHub token:**
 ```bash
-# Create .env in apps/mcp with BASE_URL=http://localhost:3000
-
-# From root
-bun mcp:dev
-
-# Or from apps/mcp
-cd apps/mcp
-npm install
-npm run dev
+export GITHUB_TOKEN="your_github_token_here"
 ```
 
-### Root-Level Scripts
+3. **Start the server:**
+```bash
+bun server
+# or with auto-reload for development
+bun server:dev
+```
+
+The server will start at `http://localhost:3000`
+
+## API Reference
+
+### Get All Comments
+
+Fetch all comments from a pull request:
 
 ```bash
-# REST API Server
+curl https://gitcom.dev/inboundemail/inbound/pull/142
+```
+
+### Get Specific Comment
+
+Fetch only the 5th comment:
+
+```bash
+curl https://gitcom.dev/inboundemail/inbound/pull/142/5
+```
+
+### Endpoint Format
+
+```
+GET /:repoOwner/:repoName/pull/:pullRequestNumber[/:commentNumber]
+```
+
+**Parameters:**
+- `repoOwner` - GitHub repository owner (username or organization)
+- `repoName` - Repository name
+- `pullRequestNumber` - Pull request number
+- `commentNumber` (optional) - Specific comment number to retrieve
+
+### Response Format
+
+The API returns markdown with:
+- Pull request metadata
+- Total comment count
+- Total token count (GPT-4 tokenization)
+- For each comment:
+  - Author and timestamp
+  - File path and line numbers
+  - Comment text
+  - Link to view on GitHub
+
+**Example:**
+```markdown
+# Pull Request #142 Comments
+
+**Repository:** inboundemail/inbound
+**Total Comments:** 21
+**Total Tokens:** 1,234
+
+---
+
+## Comment 1
+
+**Author:** @ryanvogel
+**Created:** 4/14/2011, 4:00:49 PM
+**File:** `src/main.ts`
+**Line:** 42 (RIGHT side)
+**[View on GitHub](https://github.com/...)**
+
+### Comment
+
+This looks good, but we should add error handling here.
+
+---
+...
+```
+
+## Scripts
+
+```bash
 bun server       # Start server
-bun server:dev   # Start server with auto-reload
+bun server:dev   # Start server with auto-reload (watch mode)
+```
 
-# MCP Server
-bun mcp          # Start MCP server
-bun mcp:dev      # Start MCP server with auto-reload
-bun mcp:build    # Build MCP server for production
+## Environment Variables
+
+Create a `.env` file or export these variables:
+
+```bash
+# Required: GitHub Personal Access Token
+GITHUB_TOKEN=your_github_token_here
+
+# Optional: Server port (defaults to 3000)
+PORT=3000
 ```
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│  AI Agent (Claude, etc.) via MCP Client                    │
-│                                                             │
+│  Client (curl, browser, LLM, etc.)                          │
+│  https://gitcom.dev/owner/repo/pull/123                     │
 └────────────────────────┬────────────────────────────────────┘
                          │
-                         │ MCP Protocol
-                         │
+                         │ HTTPS Request
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│  MCP Server (apps/mcp)                                      │
-│  └─ Tool: get-pr-comments                                   │
-│     - Wraps REST API calls                                  │
-│     - Uses BASE_URL env var                                 │
-│                                                             │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         │ HTTP Request
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│  REST API Server (apps/server)                              │
+│  gitcom.dev (REST API Server)                               │
 │  └─ GET /:owner/:repo/pull/:id[/:commentNum]               │
 │     - Fetches from GitHub API                               │
 │     - Formats as markdown                                   │
-│     - Counts tokens (GPT-4)                                 │
-│                                                             │
+│     - Counts tokens                                         │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          │ GitHub API
-                         │
                          ▼
                    GitHub.com
 ```
 
 ## Development
 
-Each app has its own dependencies and can be developed independently.
-
-**Environment Variables:**
-- `apps/server`: Requires `GITHUB_TOKEN` for GitHub API access
-- `apps/mcp`: Requires `BASE_URL` pointing to the REST API server
+The server code is located in `apps/server/`. See [apps/server/README.md](apps/server/README.md) for more details.
 
