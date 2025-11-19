@@ -71,10 +71,15 @@ app.get("/health", (req: Request, res: Response) => {
   res.status(200).send("OK");
 });
 
-// Main route: /:repoOwner/:repoName/pull/:id or /:repoOwner/:repoName/pull/:id/:commentNumber
-app.get("/:owner/:repo/pull/:pullRequestId/:commentNumber?", async (req: Request, res: Response) => {
-  const { owner, repo, pullRequestId, commentNumber } = req.params;
-  
+// Handler function for PR comments
+async function handlePRComments(
+  owner: string,
+  repo: string,
+  pullRequestId: string,
+  commentNumber: string | undefined,
+  token: string,
+  res: Response
+) {
   // Validate required parameters
   if (!owner || !repo || !pullRequestId) {
     const errorMarkdown = `# Error 400\n\nMissing required parameters.\n\nExpected: /:owner/:repo/pull/:pullRequestId`;
@@ -103,9 +108,6 @@ app.get("/:owner/:repo/pull/:pullRequestId/:commentNumber?", async (req: Request
         .send(errorMarkdown);
     }
   }
-
-  // Get GitHub token
-  const token = (req.query.token as string) || process.env.GITHUB_TOKEN || "";
 
   if (!token) {
     const errorMarkdown = `# Error 401\n\nMissing GitHub token.\n\n**Options:**\n- Set \`GITHUB_TOKEN\` environment variable\n- Pass token as query parameter: \`?token=your_token\``;
@@ -144,6 +146,38 @@ app.get("/:owner/:repo/pull/:pullRequestId/:commentNumber?", async (req: Request
       .set("Content-Type", "text/markdown; charset=utf-8")
       .send(errorMarkdown);
   }
+}
+
+// Route: Get specific comment by number
+app.get("/:owner/:repo/pull/:pullRequestId/:commentNumber", async (req: Request, res: Response) => {
+  const { owner, repo, pullRequestId, commentNumber } = req.params;
+  
+  if (!owner || !repo || !pullRequestId || !commentNumber) {
+    const errorMarkdown = `# Error 400\n\nMissing required parameters.`;
+    return res.status(400)
+      .set("Content-Type", "text/markdown; charset=utf-8")
+      .send(errorMarkdown);
+  }
+  
+  const token = (req.query.token as string) || process.env.GITHUB_TOKEN || "";
+  
+  return handlePRComments(owner, repo, pullRequestId, commentNumber, token, res);
+});
+
+// Route: Get all comments
+app.get("/:owner/:repo/pull/:pullRequestId", async (req: Request, res: Response) => {
+  const { owner, repo, pullRequestId } = req.params;
+  
+  if (!owner || !repo || !pullRequestId) {
+    const errorMarkdown = `# Error 400\n\nMissing required parameters.`;
+    return res.status(400)
+      .set("Content-Type", "text/markdown; charset=utf-8")
+      .send(errorMarkdown);
+  }
+  
+  const token = (req.query.token as string) || process.env.GITHUB_TOKEN || "";
+  
+  return handlePRComments(owner, repo, pullRequestId, undefined, token, res);
 });
 
 // 404 handler for all other routes
