@@ -21,6 +21,8 @@ https://gitcom.dev/inboundemail/inbound/pull/142/5
 
 - 📝 Fetch all comments from a GitHub Pull Request
 - 🔢 Get specific comments by number (1, 2, 3...)
+- 🔍 Include parent review comments (APPROVE, REQUEST_CHANGES, etc.)
+- 🧵 Show threaded comment replies
 - 🎯 Token counting using tokenization
 - 📊 Clean markdown-formatted output
 - ⚡ Built with Bun for performance
@@ -70,23 +72,47 @@ curl https://gitcom.dev/inboundemail/inbound/pull/142/5
 GET /:repoOwner/:repoName/pull/:pullRequestNumber[/:commentNumber]
 ```
 
-**Parameters:**
+**Path Parameters:**
 - `repoOwner` - GitHub repository owner (username or organization)
 - `repoName` - Repository name
 - `pullRequestNumber` - Pull request number
 - `commentNumber` (optional) - Specific comment number to retrieve
 
+**Query Parameters:**
+- `include_reviews=true` - Include parent review comments (shows APPROVE, REQUEST_CHANGES, COMMENT review bodies)
+- `show_threading=true` - Display comment replies in a threaded structure
+- `resolved=true/false` - Filter by resolved status *(Note: Limited GitHub API support)*
+
+**Advanced Examples:**
+```bash
+# Get all comments with parent reviews
+curl https://gitcom.dev/inboundemail/inbound/pull/142?include_reviews=true
+
+# Show threaded comment structure
+curl https://gitcom.dev/inboundemail/inbound/pull/142?show_threading=true
+
+# Get reviews with threaded comments
+curl https://gitcom.dev/inboundemail/inbound/pull/142?include_reviews=true&show_threading=true
+```
+
 ### Response Format
 
 The API returns markdown with:
-- Pull request metadata
-- Total comment count
+- Pull request metadata (repo, review count, comment count)
 - Total token count (GPT-4 tokenization)
+- For each review (if `include_reviews=true`):
+  - Review state (APPROVED, CHANGES_REQUESTED, COMMENTED, etc.)
+  - Author and timestamp
+  - Review body (parent comment)
+  - Associated code comments
 - For each comment:
   - Author and timestamp
   - File path and line numbers
   - Comment text
+  - Threaded replies (if `show_threading=true`)
   - Link to view on GitHub
+
+**For detailed feature documentation, see [apps/server/FEATURES.md](apps/server/FEATURES.md)**
 
 **Example:**
 ```markdown

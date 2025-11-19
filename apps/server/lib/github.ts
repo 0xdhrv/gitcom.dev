@@ -100,6 +100,25 @@ export interface PullRequestReviewComment {
   body_text?: string;
 }
 
+export type ReviewState = "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" | "DISMISSED" | "PENDING";
+
+export interface PullRequestReview {
+  id: number;
+  node_id: string;
+  user: SimpleUser;
+  body: string | null;
+  state: ReviewState;
+  html_url: string;
+  pull_request_url: string;
+  author_association: AuthorAssociation;
+  submitted_at: string;
+  commit_id: string;
+  _links: {
+    html: { href: string };
+    pull_request: { href: string };
+  };
+}
+
 export interface GitHubPRCommentsOptions {
   owner: string;
   repo: string;
@@ -142,6 +161,40 @@ export async function fetchPullRequestComments(
 }
 
 /**
+ * Fetches all reviews for a specific Pull Request
+ * 
+ * @param options - Configuration options for the API request
+ * @returns Array of Pull Request Reviews
+ * @throws Error if the API request fails
+ */
+export async function fetchPullRequestReviews(
+  options: GitHubPRCommentsOptions
+): Promise<PullRequestReview[]> {
+  const { owner, repo, pullRequestId, token } = options;
+
+  const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${pullRequestId}/reviews`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `GitHub API request failed: ${response.status} ${response.statusText}\n${errorText}`
+    );
+  }
+
+  const data = await response.json();
+  return data as PullRequestReview[];
+}
+
+/**
  * GitHub API client class for Pull Request operations
  */
 export class GitHubClient {
@@ -170,6 +223,48 @@ export class GitHubClient {
       pullRequestId,
       token: this.token,
     });
+  }
+
+  /**
+   * Fetches all reviews for a specific Pull Request
+   * 
+   * @param owner - Repository owner
+   * @param repo - Repository name
+   * @param pullRequestId - Pull Request ID
+   * @returns Array of Pull Request Reviews
+   */
+  async getPullRequestReviews(
+    owner: string,
+    repo: string,
+    pullRequestId: number
+  ): Promise<PullRequestReview[]> {
+    return fetchPullRequestReviews({
+      owner,
+      repo,
+      pullRequestId,
+      token: this.token,
+    });
+  }
+
+  /**
+   * Fetches both reviews and comments for a specific Pull Request
+   * 
+   * @param owner - Repository owner
+   * @param repo - Repository name
+   * @param pullRequestId - Pull Request ID
+   * @returns Object containing both reviews and comments
+   */
+  async getPullRequestReviewsAndComments(
+    owner: string,
+    repo: string,
+    pullRequestId: number
+  ): Promise<{ reviews: PullRequestReview[]; comments: PullRequestReviewComment[] }> {
+    const [reviews, comments] = await Promise.all([
+      this.getPullRequestReviews(owner, repo, pullRequestId),
+      this.getPullRequestComments(owner, repo, pullRequestId),
+    ]);
+
+    return { reviews, comments };
   }
 }
 
