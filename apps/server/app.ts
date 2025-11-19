@@ -71,6 +71,75 @@ app.get("/health", (req: Request, res: Response) => {
   res.status(200).send("OK");
 });
 
+// Root endpoint - Usage guide
+app.get("/", (req: Request, res: Response) => {
+  const usageGuide = `# GitHub PR Comment Parser
+
+Transform any GitHub Pull Request into LLM-ready markdown.
+
+## Usage
+
+Simply replace \`github.com\` with \`gitcom.dev\` in any pull request URL:
+
+\`\`\`
+Original: https://github.com/owner/repo/pull/123
+GitCom:   https://gitcom.dev/owner/repo/pull/123
+\`\`\`
+
+## API Endpoints
+
+### Get All Comments
+
+\`\`\`
+GET /:owner/:repo/pull/:pullRequestId
+\`\`\`
+
+**Example:**
+\`\`\`
+https://gitcom.dev/inboundemail/inbound/pull/142
+\`\`\`
+
+### Get Specific Comment
+
+\`\`\`
+GET /:owner/:repo/pull/:pullRequestId/:commentNumber
+\`\`\`
+
+**Example:**
+\`\`\`
+https://gitcom.dev/inboundemail/inbound/pull/142/5
+\`\`\`
+
+## Response Format
+
+Returns markdown with:
+- Pull request metadata
+- Total comment count
+- Total token count (GPT-4 tokenization)
+- For each comment:
+  - Author and timestamp
+  - File path and line numbers
+  - Comment text
+  - Link to GitHub
+
+## Features
+
+- 📝 All PR comments in one request
+- 🔢 Filter by comment number
+- 🎯 Token counting for LLM context planning
+- 📊 Clean markdown formatting
+- ⚡ Fast and reliable
+
+---
+
+*Powered by [GitCom](https://gitcom.dev)*
+`;
+
+  res.status(200)
+    .set("Content-Type", "text/markdown; charset=utf-8")
+    .send(usageGuide);
+});
+
 // Handler function for PR comments
 async function handlePRComments(
   owner: string,
