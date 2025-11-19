@@ -1,21 +1,13 @@
 {
   "name": "github-comment-parsing",
-  "module": "index.ts",
-  "type": "module",
+  "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
-    "start": "bun run index.ts",
-    "dev": "bun --watch index.ts",
-    "type-check": "tsc --noEmit",
-    "lint": "tsc --noEmit"
-  },
-  "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  },
-  "dependencies": {
-    "tiktoken": "^1.0.22"
+    "server": "cd apps/server && bun start",
+    "server:dev": "cd apps/server && bun dev"
   }
 }
+

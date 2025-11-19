@@ -1,119 +1,131 @@
-# github-comment-parsing
+# GitHub Comment Parsing
+
+A monorepo for GitHub Pull Request comment parsing tools.
+
+## Structure
+
+```
+github-comment-parsing/
+├── apps/
+│   ├── mcp/             # MCP (Model Context Protocol) server
+│   └── server/          # REST API server for fetching and formatting PR comments
+└── README.md            # This file
+```
+
+## Apps
+
+### Server (`apps/server`)
 
 A web server that fetches and parses GitHub Pull Request comments, returning them as formatted markdown with line numbers and token counts.
 
-## Installation
+**Features:**
+- REST API endpoints for PR comments
+- Token counting using GPT-4 tokenization
+- Markdown formatted output
+- Filter by comment number
 
-To install dependencies:
+See [apps/server/README.md](apps/server/README.md) for more details.
 
+### MCP (`apps/mcp`)
+
+Model Context Protocol server for LLM integration. Provides tools that wrap the REST API server, allowing AI agents to fetch and analyze GitHub PR comments.
+
+**Features:**
+- `get-pr-comments` tool for fetching PR comments
+- Supports filtering by comment number
+- Returns markdown with token counts
+- Wraps the REST API server via HTTP
+
+**Note:** The REST API server (`apps/server`) must be running for the MCP server to function.
+
+See [apps/mcp/README.md](apps/mcp/README.md) for more details.
+
+## Getting Started
+
+### Quick Start (Both Servers)
+
+1. **Start the REST API server** (required for both REST and MCP):
 ```bash
+# From root
+bun server:dev
+
+# Or from apps/server
+cd apps/server
 bun install
-```
-
-## Configuration
-
-Set your GitHub token as an environment variable:
-
-```bash
-export GITHUB_TOKEN="your_github_token_here"
-```
-
-Alternatively, you can pass the token as a query parameter (not recommended for production).
-
-## Usage
-
-Start the server:
-
-```bash
-bun start
-# or with auto-reload on file changes
 bun dev
 ```
 
-The server will start on port 3000 (or the port specified in the `PORT` environment variable).
-
-### Available Scripts
-
-- `bun start` - Start the server
-- `bun dev` - Start the server with auto-reload on file changes
-- `bun type-check` - Check TypeScript types without emitting files
-- `bun lint` - Run TypeScript linter
-
-### API Endpoints
-
-#### Get All Comments
-
-**GET** `/:repoOwner/:repoName/pull/:id`
-
-Returns all comments for a pull request with token counts.
-
-#### Get Single Comment
-
-**GET** `/:repoOwner/:repoName/pull/:id/:commentNumber`
-
-Returns a specific comment by its number (1, 2, 3...) with token count.
-
-#### Query Parameters
-
-- `token` (optional): GitHub token (if not set via environment variable)
-
-#### Example Requests
-
-Get all comments:
+2. **Start the MCP server** (optional, for LLM integration):
 ```bash
-curl "http://localhost:3000/octocat/Hello-World/pull/142"
+# Create .env in apps/mcp with BASE_URL=http://localhost:3000
+
+# From root
+bun mcp:dev
+
+# Or from apps/mcp
+cd apps/mcp
+npm install
+npm run dev
 ```
 
-Get a specific comment by number (e.g., the 5th comment):
-```bash
-curl "http://localhost:3000/octocat/Hello-World/pull/142/5"
-```
-
-With a token parameter (if not using environment variable):
-```bash
-curl "http://localhost:3000/octocat/Hello-World/pull/142?token=your_github_token"
-```
-
-#### Example Response
-
-The API returns a markdown-formatted response with token counts:
-
-```markdown
-# Pull Request #142 Comments
-
-**Repository:** octocat/Hello-World
-**Total Comments:** 2
-**Total Tokens:** 145
-
----
-
-## Comment 1
-
-**Author:** @octocat
-**Created:** 4/14/2011, 4:00:49 PM
-**File:** `config/database.yaml`
-**Line:** 5 (RIGHT side)
-**[View on GitHub](https://github.com/octocat/Hello-World/pull/1#discussion-diff-1)**
-
-### Comment
-
-We should probably include a check for null values here.
-
----
-
-## Comment 2
-
-...
-```
-
-The token counts use GPT-4 tokenization to help you understand the size of each comment.
-
-### Health Check
+### Root-Level Scripts
 
 ```bash
-curl http://localhost:3000/health
+# REST API Server
+bun server       # Start server
+bun server:dev   # Start server with auto-reload
+
+# MCP Server
+bun mcp          # Start MCP server
+bun mcp:dev      # Start MCP server with auto-reload
+bun mcp:build    # Build MCP server for production
 ```
 
-## Project Info
+## Architecture
 
-This project was created using `bun init` in bun v1.3.0. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+```
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│  AI Agent (Claude, etc.) via MCP Client                    │
+│                                                             │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         │ MCP Protocol
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│  MCP Server (apps/mcp)                                      │
+│  └─ Tool: get-pr-comments                                   │
+│     - Wraps REST API calls                                  │
+│     - Uses BASE_URL env var                                 │
+│                                                             │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         │ HTTP Request
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│  REST API Server (apps/server)                              │
+│  └─ GET /:owner/:repo/pull/:id[/:commentNum]               │
+│     - Fetches from GitHub API                               │
+│     - Formats as markdown                                   │
+│     - Counts tokens (GPT-4)                                 │
+│                                                             │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         │ GitHub API
+                         │
+                         ▼
+                   GitHub.com
+```
+
+## Development
+
+Each app has its own dependencies and can be developed independently.
+
+**Environment Variables:**
+- `apps/server`: Requires `GITHUB_TOKEN` for GitHub API access
+- `apps/mcp`: Requires `BASE_URL` pointing to the REST API server
+
