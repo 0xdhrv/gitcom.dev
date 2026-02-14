@@ -194,7 +194,7 @@ export async function fetchPullRequestComments(
 ): Promise<PullRequestReviewComment[]> {
   const { owner, repo, pullRequestId, token } = options;
 
-  const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${pullRequestId}/comments`;
+  const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${pullRequestId}/comments?per_page=100`;
 
   const response = await fetch(url, {
     method: "GET",
@@ -228,7 +228,7 @@ export async function fetchPullRequestReviews(
 ): Promise<PullRequestReview[]> {
   const { owner, repo, pullRequestId, token } = options;
 
-  const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${pullRequestId}/reviews`;
+  const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${pullRequestId}/reviews?per_page=100`;
 
   const response = await fetch(url, {
     method: "GET",
@@ -296,7 +296,7 @@ export async function fetchIssueComments(
 ): Promise<IssueComment[]> {
   const { owner, repo, issueNumber, token } = options;
 
-  const url = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`;
+  const url = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=100`;
 
   const response = await fetch(url, {
     method: "GET",
