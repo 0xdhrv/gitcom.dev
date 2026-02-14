@@ -119,10 +119,66 @@ export interface PullRequestReview {
   };
 }
 
+export interface Issue {
+  id: number;
+  node_id: string;
+  url: string;
+  repository_url: string;
+  labels_url: string;
+  comments_url: string;
+  events_url: string;
+  html_url: string;
+  number: number;
+  state: string;
+  title: string;
+  body: string | null;
+  user: SimpleUser;
+  labels: any[]; // Use any[] for simplicity unless specific label structure is needed
+  assignee: SimpleUser | null;
+  assignees: SimpleUser[];
+  milestone: any | null;
+  locked: boolean;
+  active_lock_reason: string | null;
+  comments: number;
+  pull_request?: {
+    url: string;
+    html_url: string;
+    diff_url: string;
+    patch_url: string;
+  };
+  closed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  author_association: AuthorAssociation;
+  reactions: ReactionRollup;
+}
+
+export interface IssueComment {
+  url: string;
+  html_url: string;
+  issue_url: string;
+  id: number;
+  node_id: string;
+  user: SimpleUser;
+  created_at: string;
+  updated_at: string;
+  author_association: AuthorAssociation;
+  body: string;
+  reactions?: ReactionRollup;
+  performed_via_github_app?: any;
+}
+
 export interface GitHubPRCommentsOptions {
   owner: string;
   repo: string;
   pullRequestId: number;
+  token: string;
+}
+
+export interface GitHubIssueOptions {
+  owner: string;
+  repo: string;
+  issueNumber: number;
   token: string;
 }
 
@@ -192,6 +248,74 @@ export async function fetchPullRequestReviews(
 
   const data = await response.json();
   return data as PullRequestReview[];
+}
+
+/**
+ * Fetches an issue by number
+ *
+ * @param options - Configuration options for the API request
+ * @returns The Issue object
+ * @throws Error if the API request fails
+ */
+export async function fetchIssue(
+  options: GitHubIssueOptions
+): Promise<Issue> {
+  const { owner, repo, issueNumber, token } = options;
+
+  const url = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `GitHub API request failed: ${response.status} ${response.statusText}\n${errorText}`
+    );
+  }
+
+  const data = await response.json();
+  return data as Issue;
+}
+
+/**
+ * Fetches all comments for a specific Issue
+ *
+ * @param options - Configuration options for the API request
+ * @returns Array of Issue Comments
+ * @throws Error if the API request fails
+ */
+export async function fetchIssueComments(
+  options: GitHubIssueOptions
+): Promise<IssueComment[]> {
+  const { owner, repo, issueNumber, token } = options;
+
+  const url = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `GitHub API request failed: ${response.status} ${response.statusText}\n${errorText}`
+    );
+  }
+
+  const data = await response.json();
+  return data as IssueComment[];
 }
 
 /**
@@ -266,5 +390,46 @@ export class GitHubClient {
 
     return { reviews, comments };
   }
-}
 
+  /**
+   * Fetches an issue by number
+   *
+   * @param owner - Repository owner
+   * @param repo - Repository name
+   * @param issueNumber - Issue number
+   * @returns The Issue object
+   */
+  async getIssue(
+    owner: string,
+    repo: string,
+    issueNumber: number
+  ): Promise<Issue> {
+    return fetchIssue({
+      owner,
+      repo,
+      issueNumber,
+      token: this.token,
+    });
+  }
+
+  /**
+   * Fetches all comments for a specific Issue
+   *
+   * @param owner - Repository owner
+   * @param repo - Repository name
+   * @param issueNumber - Issue number
+   * @returns Array of Issue Comments
+   */
+  async getIssueComments(
+    owner: string,
+    repo: string,
+    issueNumber: number
+  ): Promise<IssueComment[]> {
+    return fetchIssueComments({
+      owner,
+      repo,
+      issueNumber,
+      token: this.token,
+    });
+  }
+}
