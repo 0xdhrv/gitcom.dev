@@ -46,8 +46,11 @@ describe("Issue Support", () => {
             return {
                 ok: true,
                 json: async () => mockComments,
-                text: async () => JSON.stringify(mockComments)
-            } as Response;
+                text: async () => JSON.stringify(mockComments),
+                headers: {
+                    get: (name: string) => null // No pagination
+                }
+            } as any; // Cast to any to handle partial mock
         }
 
         // Mock Issue Details
@@ -55,8 +58,11 @@ describe("Issue Support", () => {
              return {
                 ok: true,
                 json: async () => mockIssue,
-                text: async () => JSON.stringify(mockIssue)
-            } as Response;
+                text: async () => JSON.stringify(mockIssue),
+                headers: {
+                    get: (name: string) => null
+                }
+            } as any;
         }
 
         return {

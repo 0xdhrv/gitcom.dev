@@ -183,6 +183,66 @@ export interface GitHubIssueOptions {
 }
 
 /**
+ * Helper function to fetch paginated results from GitHub API
+ *
+ * @param url - The initial URL to fetch
+ * @param token - GitHub personal access token
+ * @returns Array of accumulated results
+ */
+async function fetchPaginated<T>(url: string, token: string): Promise<T[]> {
+  let results: T[] = [];
+  let nextUrl: string | null = url;
+
+  while (nextUrl) {
+    const response = await fetch(nextUrl, {
+      method: "GET",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `GitHub API request failed: ${response.status} ${response.statusText}\n${errorText}`
+      );
+    }
+
+    const data = await response.json();
+    results = results.concat(data as T[]);
+
+    // Check for Link header to handle pagination
+    const linkHeader = response.headers.get("link");
+    const currentUrl = nextUrl; // Store current URL to compare
+    nextUrl = null;
+
+    if (linkHeader) {
+      const links = linkHeader.split(",");
+      for (const link of links) {
+        const parts = link.split(";");
+        if (parts.length < 2) continue;
+
+        const urlPart = parts[0]!;
+        const relPart = parts[1]!;
+
+        if (relPart.includes('rel="next"')) {
+          const newUrl = urlPart.trim().slice(1, -1);
+          // Avoid infinite loop if next URL is same as current (shouldn't happen with correct API)
+          if (newUrl !== currentUrl) {
+              nextUrl = newUrl;
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  return results;
+}
+
+/**
  * Fetches all comments for a specific Pull Request
  * 
  * @param options - Configuration options for the API request
@@ -193,27 +253,8 @@ export async function fetchPullRequestComments(
   options: GitHubPRCommentsOptions
 ): Promise<PullRequestReviewComment[]> {
   const { owner, repo, pullRequestId, token } = options;
-
   const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${pullRequestId}/comments?per_page=100`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `GitHub API request failed: ${response.status} ${response.statusText}\n${errorText}`
-    );
-  }
-
-  const data = await response.json();
-  return data as PullRequestReviewComment[];
+  return fetchPaginated<PullRequestReviewComment>(url, token);
 }
 
 /**
@@ -227,27 +268,8 @@ export async function fetchPullRequestReviews(
   options: GitHubPRCommentsOptions
 ): Promise<PullRequestReview[]> {
   const { owner, repo, pullRequestId, token } = options;
-
   const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${pullRequestId}/reviews?per_page=100`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `GitHub API request failed: ${response.status} ${response.statusText}\n${errorText}`
-    );
-  }
-
-  const data = await response.json();
-  return data as PullRequestReview[];
+  return fetchPaginated<PullRequestReview>(url, token);
 }
 
 /**
@@ -295,27 +317,8 @@ export async function fetchIssueComments(
   options: GitHubIssueOptions
 ): Promise<IssueComment[]> {
   const { owner, repo, issueNumber, token } = options;
-
   const url = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=100`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `GitHub API request failed: ${response.status} ${response.statusText}\n${errorText}`
-    );
-  }
-
-  const data = await response.json();
-  return data as IssueComment[];
+  return fetchPaginated<IssueComment>(url, token);
 }
 
 /**
